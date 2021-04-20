@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Create a new ASR recipe - ASR-TTS class 2021</title>
+        <link href="../css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css">
+
+        <script src="../js/jquery-1.10.2.min.js" defer></script>
+        <script src="../js/bootstrap-3.0.3.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script> 
+    </head>
+
+    <body>
+
+        <div class="navbar navbar-default navbar-fixed-top" role="navigation">
+            <div class="container">
+
+                <!-- Collapsed navigation -->
+                <div class="navbar-header">
+                    <!-- Expander button -->
+                    <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                        <span class="sr-only">Toggle navigation</span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand" href="..">ASR-TTS class 2021</a>
+                </div>
+
+                <!-- Expanded navigation -->
+                <div class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li >
+                                <a href="..">Home</a>
+                            </li>
+                            <li >
+                                <a href="../start/">Getting started</a>
+                            </li>
+                            <li class="active">
+                                <a href="./">Create a new ASR recipe</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="#" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li >
+                                <a rel="next" href="../start/">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="disabled">
+                                <a rel="prev" >
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+                <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+        <li class="main active"><a href="#create-a-new-kaldi-recipe">Create a new Kaldi recipe</a></li>
+            <li><a href="#first-pick-a-task-or-more-typically-the-task-will-pick-you">First pick a task ( or, more typically, the task will pick you )</a></li>
+            <li><a href="#use-mini-librispeech-as-our-guide">Use mini-librispeech as our guide</a></li>
+            <li><a href="#create-the-folder-for-the-new-recipe">Create the folder for the new recipe</a></li>
+            <li><a href="#initial-recipe-modifications">Initial recipe modifications</a></li>
+    </ul>
+</div></div>
+                <div class="col-md-9" role="main">
+
+<h1 id="create-a-new-kaldi-recipe">Create a new Kaldi recipe</h1>
+<p>So, what is really a recipe in this context? It's the set of instructions the machine should follow to actually generate, or train, if you like, a speech recognition engine for a specific task. One such task could be speech recognition for Mandarin Chinese or spoken command recognition for smart home applications, or you name it. By "engine" here we essentially refer to a "final.mdl" file including all acoustic modeling information, a "HCLG.fst" with all language information and a few other configuration
+files. These files can be loaded into a so-called decoder (one of the "tools" Kaldi provides) to actually transform speech into text. There are already multiple recipes
+to build such engines included with Kaldi and we will be re-using them as much as possible. That is probably the most important take-home-message of this exercise: there is already a lot of work put into Kaldi, we just need to understand a bit better what kind of "lego pieces", or, even better, "lego structures" we have available and then go ahead to build our "castle". </p>
+<h2 id="first-pick-a-task-or-more-typically-the-task-will-pick-you">First pick a task ( or, more typically, the task will pick you )</h2>
+<p>In our case we just want to build a speech recognition engine for dictation in Russian. We will be using commonvoice data as provided by Mozilla. I used to be a great fan of voxforge in the past for open source data but it seems that Mozilla is actually doing a very good job on that these dayes: many languages and really lots of crowdsourced data.</p>
+<h2 id="use-mini-librispeech-as-our-guide">Use mini-librispeech as our guide</h2>
+<p>We will then simply run the mini-librispeech recipe to make sure that it works smoothly and that we get back the results we expect. I can do that by just running:</p>
+<pre><code>cd asr_recipes/mini_librispeech/s5
+./run.sh
+</code></pre>
+
+<p>We would typically just need to replace 'queue.pl' inside cmd.sh file with 'run.pl' for the recipe to run end-to-end without problems:</p>
+<pre><code>sed -i 's/queue/run/g' cmd.sh
+</code></pre>
+
+<p>The recipe will reach stage 9 and will typically exit with a message saying that there are no GPUs available, etc. That is actually fine for now.</p>
+<h2 id="create-the-folder-for-the-new-recipe">Create the folder for the new recipe</h2>
+<p>Let's name it cv-russian. And also create a subfolder 's5' into it:</p>
+<pre><code>cd asr_recipes
+mkdir -p cv-russian/s5
+</code></pre>
+
+<p>This 's5' is legacy from one of the initial recipes developed, namely one for the Wall Street Journal task (still available as wsj inside asr_recipes). There is used to be multiple alternatives, from s1 to s5. The best of them, 's5', was the one essentially inherited and properly modified in other recipes that were developed later on. </p>
+<p>Let's copy 'run.sh' into our newly created foler:</p>
+<pre><code>cp asr_recipes/mini_librispeech/s5/run.sh cv-russian/s5
+</code></pre>
+
+<h2 id="initial-recipe-modifications">Initial recipe modifications</h2>
+<p>By quickly reviewing the "./run.sh" file we can identify four main parts:
+1. The preamble, where a few basic variables are initialized (that's up to the line <code>mkdir -p $data</code>)
+1. The data download section, where all audio files, transcriptions, and the language model are downloaded from the web (a few lines before stage 0 and stage 0).
+1. The main data preparation part, where downloaded data are essentially formatted so that they can be fed to Kaldi tools for model training and testing (staages 1 and 2).
+1. The model training part, 
+And let's see what we need to do to make the recipe run. Starting with the preamble:</p>
+<pre><code>#!/usr/bin/env bash
+
+# Change this location to somewhere where you want to put the data.
+data=./corpus/
+
+data_url=www.openslr.org/resources/31
+lm_url=www.openslr.org/resources/11
+
+. ./cmd.sh
+. ./path.sh
+
+stage=0
+. utils/parse_options.sh
+
+set -euo pipefail
+
+mkdir -p $data
+
+for part in dev-clean-2 train-clean-5; do
+  local/download_and_untar.sh $data $data_url $part
+done
+
+if [ $stage -le 0 ]; then
+  local/download_lm.sh $lm_url $data data/local/lm
+fi
+</code></pre>
+
+<p>Let's also copy 'utils', 'local', and 'steps', folders from the mini_librispeech folder into our new folder:</p>
+<pre><code>mini_librispeech=asr_recipes/mini_librispeech/s5
+cp -rp $mini_librispeech/{utils,local,steps} cv_russian/s5
+</code></pre>
+
+<p>You may notice in the process that 'utils' and 'steps' are just links to corresponding directories inside the 'wsj' recipe folder. This is the Kaldi recipe development philosophy in practice: reusing scripts and utilities developed for the initial 'wsj' recipe. </p></div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js" defer></script>
+        <script src="../search/main.js" defer></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="Search Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Search</h4>
+            </div>
+            <div class="modal-body">
+                <p>
+                    From here you can search these documents. Enter
+                    your search terms below.
+                </p>
+                <form role="form">
+                    <div class="form-group">
+                        <input type="text" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="Keyboard Shortcuts Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Keyboard Shortcuts</h4>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>
