@@ -3,3 +3,4 @@ nav:
   - Home: index.md
   - Getting started: start.md
   - Create a new ASR recipe: recipe.md
+  - Prepare the data for Kaldi: prepare.md
