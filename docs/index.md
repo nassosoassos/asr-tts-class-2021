@@ -1,17 +1,4 @@
-# Welcome to MkDocs
+# Welcome to ASR-TTS-class 2021
 
-For full documentation visit [mkdocs.org](https://mkdocs.org).
-
-## Commands
-
-* `mkdocs new [dir-name]` - Create a new project.
-* `mkdocs serve` - Start the live-reloading docs server.
-* `mkdocs build` - Build the documentation site.
-* `mkdocs help` - Print this help message.
-
-## Project layout
-
-    mkdocs.yml    # The configuration file.
-    docs/
-        index.md  # The documentation homepage.
-        ...       # Other markdown pages, images and other files.
+We will be using this for additional explanations and instructions regarding the code and methodologies we are discussing during our meetings. 
+Keep in mind that the code can be found here: https://github.com/nassosoassos/asr-tts-class-2021 Happy making! 
