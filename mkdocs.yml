@@ -1,6 +1,5 @@
 site_name: ASR-TTS class 2021
 nav:
   - Home: index.md
-  - Getting started: start.md
   - Create a new ASR recipe: recipe.md
   - Prepare the data for Kaldi: prepare.md
