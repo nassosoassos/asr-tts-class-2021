@@ -50,6 +50,9 @@
                             <li class="active">
                                 <a href="./">Create a new ASR recipe</a>
                             </li>
+                            <li >
+                                <a href="../prepare/">Prepare the data for Kaldi</a>
+                            </li>
                         </ul>
 
                     <ul class="nav navbar-nav navbar-right">
@@ -63,8 +66,8 @@
                                     <i class="fa fa-arrow-left"></i> Previous
                                 </a>
                             </li>
-                            <li class="disabled">
-                                <a rel="prev" >
+                            <li >
+                                <a rel="prev" href="../prepare/">
                                     Next <i class="fa fa-arrow-right"></i>
                                 </a>
                             </li>
@@ -76,83 +79,102 @@
         <div class="container">
                 <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
     <ul class="nav bs-sidenav">
-        <li class="main active"><a href="#create-a-new-kaldi-recipe">Create a new Kaldi recipe</a></li>
+        <li class="main active"><a href="#how-to-initialize-a-new-kaldi-recipe">How to initialize a new Kaldi recipe</a></li>
             <li><a href="#first-pick-a-task-or-more-typically-the-task-will-pick-you">First pick a task ( or, more typically, the task will pick you )</a></li>
             <li><a href="#use-mini-librispeech-as-our-guide">Use mini-librispeech as our guide</a></li>
             <li><a href="#create-the-folder-for-the-new-recipe">Create the folder for the new recipe</a></li>
-            <li><a href="#initial-recipe-modifications">Initial recipe modifications</a></li>
+            <li><a href="#initial-recipe-structure">Initial recipe structure</a></li>
+            <li><a href="#our-data">Our data</a></li>
     </ul>
 </div></div>
                 <div class="col-md-9" role="main">
 
-<h1 id="create-a-new-kaldi-recipe">Create a new Kaldi recipe</h1>
-<p>So, what is really a recipe in this context? It's the set of instructions the machine should follow to actually generate, or train, if you like, a speech recognition engine for a specific task. One such task could be speech recognition for Mandarin Chinese or spoken command recognition for smart home applications, or you name it. By "engine" here we essentially refer to a "final.mdl" file including all acoustic modeling information, a "HCLG.fst" with all language information and a few other configuration
-files. These files can be loaded into a so-called decoder (one of the "tools" Kaldi provides) to actually transform speech into text. There are already multiple recipes
-to build such engines included with Kaldi and we will be re-using them as much as possible. That is probably the most important take-home-message of this exercise: there is already a lot of work put into Kaldi, we just need to understand a bit better what kind of "lego pieces", or, even better, "lego structures" we have available and then go ahead to build our "castle". </p>
+<h1 id="how-to-initialize-a-new-kaldi-recipe">How to initialize a new Kaldi recipe</h1>
+<p>So, what is really a recipe in this context? It's the set of instructions the machine should follow to actually generate, or train, if you like, a speech recognition engine for a specific task. One such task could be speech recognition for Mandarin Chinese or spoken command recognition for smart home applications, or you name it. By "engine" here we essentially refer to a "final.mdl" file including all acoustic modeling information, a "HCLG.fst" with all language information and a few other configuration</p>
+<p>files. These files can be loaded into a so-called decoder (one of the "tools" Kaldi provides) to actually transform speech into text. There are already multiple recipes</p>
+<p>to build such engines included with Kaldi and we will be re-using them as much as possible. That is probably the most important take-home-message of this exercise: there is already a lot of work put into Kaldi, we just need to understand a bit better what kind of "lego pieces", or, even better, "lego structures" we have available and then go ahead to build our "castle".</p>
 <h2 id="first-pick-a-task-or-more-typically-the-task-will-pick-you">First pick a task ( or, more typically, the task will pick you )</h2>
-<p>In our case we just want to build a speech recognition engine for dictation in Russian. We will be using commonvoice data as provided by Mozilla. I used to be a great fan of voxforge in the past for open source data but it seems that Mozilla is actually doing a very good job on that these dayes: many languages and really lots of crowdsourced data.</p>
+<p>In our case we just want to build a speech recognition engine for dictation in Russian and we will use that as a working case. Other cases one can work on:</p>
+<p>We will be using commonvoice data as provided by Mozilla. I used to be a fan of voxforge in the past for open source data but it seems that Mozilla is actually doing a very good job on that these days: offers many languages and really lots of crowdsourced data.</p>
 <h2 id="use-mini-librispeech-as-our-guide">Use mini-librispeech as our guide</h2>
 <p>We will then simply run the mini-librispeech recipe to make sure that it works smoothly and that we get back the results we expect. I can do that by just running:</p>
-<pre><code>cd asr_recipes/mini_librispeech/s5
+<pre><code class="bash">cd asr\_recipes/mini\_librispeech/s5
 ./run.sh
 </code></pre>
 
 <p>We would typically just need to replace 'queue.pl' inside cmd.sh file with 'run.pl' for the recipe to run end-to-end without problems:</p>
-<pre><code>sed -i 's/queue/run/g' cmd.sh
+<pre><code class="bash">sed -i 's/queue/run/g' cmd.sh
 </code></pre>
 
-<p>The recipe will reach stage 9 and will typically exit with a message saying that there are no GPUs available, etc. That is actually fine for now.</p>
+<p>The recipe will reach stage 9 and will typically exit with a message saying that there are no GPUs available, etc. That is fine for now.</p>
+<p>You can check that the recipe has worked by running the one-liner in the header of the RESULTS file inside the s5 folder. This command (or multiple commands, better) will look for the WERs (Word Error Rates) estimated for various different configurations and different snapshots of the speech recognition engine, pick the lowest of them and display it:</p>
+<pre><code class="bash">for x in exp/*/decode\*; do 
+    [ -d $x ] &amp;&amp; [[ $x =~ &quot;$1&quot; ]] &amp;&amp; \
+    grep WER $x/wer_\* | \
+    utils/best_wer.sh; 
+done
+</code></pre>
+
+<p>The output should be something like the following, presenting the numbers for insertions/deletions/substitutions for three tests using different language models (small, medium, large):</p>
+<pre><code>WER 13.45 [ 2708 / 20138, 358 ins, 330 del, 2020 sub ] exp/tri3b/decode_nosp_tglarge_dev_clean_2/wer_17_0.0
+WER 16.25 [ 3273 / 20138, 332 ins, 485 del, 2456 sub ] exp/tri3b/decode_nosp_tgmed_dev_clean_2/wer_16_0.0
+WER 18.10 [ 3645 / 20138, 332 ins, 603 del, 2710 sub ] exp/tri3b/decode_nosp_tgsmall_dev_clean_2/wer_16_0.0
+</code></pre>
+
 <h2 id="create-the-folder-for-the-new-recipe">Create the folder for the new recipe</h2>
 <p>Let's name it cv-russian. And also create a subfolder 's5' into it:</p>
-<pre><code>cd asr_recipes
+<pre><code class="bash">cd asr\_recipes
 mkdir -p cv-russian/s5
 </code></pre>
 
-<p>This 's5' is legacy from one of the initial recipes developed, namely one for the Wall Street Journal task (still available as wsj inside asr_recipes). There is used to be multiple alternatives, from s1 to s5. The best of them, 's5', was the one essentially inherited and properly modified in other recipes that were developed later on. </p>
-<p>Let's copy 'run.sh' into our newly created foler:</p>
-<pre><code>cp asr_recipes/mini_librispeech/s5/run.sh cv-russian/s5
+<p>This 's5' is legacy from one of the initial recipes developed, namely one for the Wall Street Journal task (still available as wsj inside asr_recipes). There is used to be multiple alternatives, from s1 to s5. The best of them, 's5', was the one essentially inherited and properly modified in other recipes that were developed later on.</p>
+<p>And let's create a new run.sh file in ths folder.  </p>
+<h2 id="initial-recipe-structure">Initial recipe structure</h2>
+<p>The recipe will need to include four (or five, optionally) main parts:</p>
+<ol>
+<li>
+<p>The preamble, where we will initialize stuff, create the necessary folder structure and add tools to our working path </p>
+</li>
+<li>
+<p>If we don't yet have the dataset available, we will need to also include a "download data" section, where all audio files, transcriptions, and, if available, the language model as well are downloaded from the web (or transferred from elsewhere)</p>
+</li>
+<li>
+<p>The main data preparation part, where speech data are preprocessed so that they can be fed to Kaldi tools for model training and testing </p>
+</li>
+<li>
+<p>The acoustic model training part, where we will be feeding the data to the appropriate Kaldi tools to build the engine.</p>
+</li>
+</ol>
+<h2 id="our-data">Our data</h2>
+<p>Before moving any deeper into the recipe development, let's first review our data. We will be looking for audio recordings (.wav, .mp3 files or other formats) and the corresponding transcriptions (.txt, .json, .tsv files or similar). These are the basic ingredients: we need the audio (in relatively small chunks, typically, e.g., 10-15 seconds of duration max.) and what was actually said in the audio in the form of text.</p>
+<p>For the tutorial, we will be using Russian data from commonvoice as made available [[https://commonvoice.mozilla.org/en/datasets|here]]. It's impressive how they've gathered data from so many languages in there. Other sources for publicly available speech data include: [[http://www.voxforge.org|voxforge]], [[https://www.openslr.org/12|librispeech]], and [[https://www.openslr.org/51/|TED Talks]]. Here is a nice collection, by the way, of relevant publicly available resources [[https://www.openslr.org/index.html]]. </p>
+<p>Assuming for now that data have already been downloaded and are stored in a locally mounted folder as unzipped from the downloaded dataset (ru.tar.gz. Use: <code>tar xvfz ru.tar.gz</code> to unzip):</p>
+<pre><code class="bash">data=/other/data/russian/cv-corpus-6.1-2020-12-11/ru/
 </code></pre>
 
-<h2 id="initial-recipe-modifications">Initial recipe modifications</h2>
-<p>By quickly reviewing the "./run.sh" file we can identify four main parts:
-1. The preamble, where a few basic variables are initialized (that's up to the line <code>mkdir -p $data</code>)
-1. The data download section, where all audio files, transcriptions, and the language model are downloaded from the web (a few lines before stage 0 and stage 0).
-1. The main data preparation part, where downloaded data are essentially formatted so that they can be fed to Kaldi tools for model training and testing (staages 1 and 2).
-1. The model training part, 
-And let's see what we need to do to make the recipe run. Starting with the preamble:</p>
-<pre><code>#!/usr/bin/env bash
-
-# Change this location to somewhere where you want to put the data.
-data=./corpus/
-
-data_url=www.openslr.org/resources/31
-lm_url=www.openslr.org/resources/11
-
-. ./cmd.sh
-. ./path.sh
-
-stage=0
-. utils/parse_options.sh
-
-set -euo pipefail
-
-mkdir -p $data
-
-for part in dev-clean-2 train-clean-5; do
-  local/download_and_untar.sh $data $data_url $part
-done
-
-if [ $stage -le 0 ]; then
-  local/download_lm.sh $lm_url $data data/local/lm
-fi
+<p>This is what we have in there:</p>
+<pre><code>clips  dev.tsv  invalidated.tsv  other.tsv  reported.tsv  testing  test.tsv  text  train.tsv  validated.tsv
 </code></pre>
 
-<p>Let's also copy 'utils', 'local', and 'steps', folders from the mini_librispeech folder into our new folder:</p>
-<pre><code>mini_librispeech=asr_recipes/mini_librispeech/s5
-cp -rp $mini_librispeech/{utils,local,steps} cv_russian/s5
+<p>Our audio is in .mp3 format inside the clips folder. We will some extra preprocessing for these as we will see later on.</p>
+<pre><code>common_voice_ru_18849003.mp3
+common_voice_ru_18849004.mp3
+common_voice_ru_18849005.mp3
+common_voice_ru_18849006.mp3
+...
 </code></pre>
 
-<p>You may notice in the process that 'utils' and 'steps' are just links to corresponding directories inside the 'wsj' recipe folder. This is the Kaldi recipe development philosophy in practice: reusing scripts and utilities developed for the initial 'wsj' recipe. </p></div>
+<p>And then we have these .tsv files (watch for tab separated values), with metadata:</p>
+<pre><code>train.tsv
+
+client_id   path    sentence    up_votes    down_votes  age gender  accent  ...
+87e2683ece  common_voice_ru_18931630.mp3    Важно, чтобы все стороны четко ...
+</code></pre>
+
+<p>It's where we will get our transcriptions from, there is a <code>sentence</code> field for each <code>path</code> with the text in Russian. There's also speaker information, i.e., <code>client_id</code>, that will come in handy during training. </p>
+<p>So, here's the plan: 
+1. We have a list of the files we will be using for training, testing, and development (coming from the corresponding .tsv files) along with the corresponding transcriptions. It won't be hard to actually convert these to the appropriate format for kaldi. We will see how that happens in the following.
+2. We also have the audio recordings as .mp3 files that we will need to convert to wav for further processing. Tools like <code>ffmpeg</code> or <code>sox</code> can be used to the rescue. </p></div>
         </div>
 
         <footer class="col-md-12">

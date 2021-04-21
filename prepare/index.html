@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Prepare the data for Kaldi - ASR-TTS class 2021</title>
+        <link href="../css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css">
+
+        <script src="../js/jquery-1.10.2.min.js" defer></script>
+        <script src="../js/bootstrap-3.0.3.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script> 
+    </head>
+
+    <body>
+
+        <div class="navbar navbar-default navbar-fixed-top" role="navigation">
+            <div class="container">
+
+                <!-- Collapsed navigation -->
+                <div class="navbar-header">
+                    <!-- Expander button -->
+                    <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                        <span class="sr-only">Toggle navigation</span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand" href="..">ASR-TTS class 2021</a>
+                </div>
+
+                <!-- Expanded navigation -->
+                <div class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li >
+                                <a href="..">Home</a>
+                            </li>
+                            <li >
+                                <a href="../start/">Getting started</a>
+                            </li>
+                            <li >
+                                <a href="../recipe/">Create a new ASR recipe</a>
+                            </li>
+                            <li class="active">
+                                <a href="./">Prepare the data for Kaldi</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="#" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li >
+                                <a rel="next" href="../recipe/">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="disabled">
+                                <a rel="prev" >
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+                <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+        <li class="main active"><a href="#preparing-the-data-for-kaldi">Preparing the data for Kaldi</a></li>
+            <li><a href="#the-theory">The theory</a></li>
+            <li><a href="#in-practice">In practice</a></li>
+            <li><a href="#final-steps">Final steps</a></li>
+            <li><a href="#back-to-the-recipe">Back to the recipe</a></li>
+    </ul>
+</div></div>
+                <div class="col-md-9" role="main">
+
+<h1 id="preparing-the-data-for-kaldi">Preparing the data for Kaldi</h1>
+<h2 id="the-theory">The theory</h2>
+<p>Considering that our dataset is a set of utterances, each with a unique id, we will need to create three files (using the names of the files as these are created for the mini-librispeech recipe):</p>
+<p>A <code>wav.scp</code> file providing the mapping of the ids to the corresponding audio files. There is a bit more to that if the files are not in .wav format but we will get there soon. </p>
+<pre><code>wav.scp
+
+id000001 /data/audio/file1.wav
+id000002 /data/audio/file2.wav
+...
+</code></pre>
+
+<p>A <code>text</code> file linking each id to the text of the utterance.</p>
+<pre><code>text
+
+id000001 This is the text uttered in the first file
+id000002 I am now reading the second line
+...
+</code></pre>
+
+<p>A <code>utt2spk</code> file mapping each utterance id to a speaker id. If speakers are unknown we can use a separate speaker id per utterance.</p>
+<pre><code>id000001 spk_id_0001
+id000002 spk_id_0001
+...
+</code></pre>
+
+<p>There is a <code>spk2utt</code> file that is also needed but we will create this using a utility script already provided by Kaldi. </p>
+<h2 id="in-practice">In practice</h2>
+<h3 id="reading-the-tsv-files-or-creating-such-files-if-they-do-not-exist">Reading the tsv files (or creating such files if they do not exist)</h3>
+<p>We will use pandas for that: </p>
+<pre><code class="python">import pandas
+import csv
+
+part_file='train.tsv'
+
+# The .tsv file has the following columns:
+# client_id, path, sentence, ...
+dataset = pandas.read_csv(part_file, delimiter='\t')
+dataset['id'] = dataset['client_id']+ '_' + dataset['path'].str.replace('.mp3','', regex=True)
+
+# Doing this here since Kaldi tools seem to be expecting it later in the pipeline
+dataset = dataset.sort_values(by=['id'])
+</code></pre>
+
+<p>But what happens when there are no .tsv files? If we just have a directory of audio recordings and the transcriptions already in a separate file tagged by the correspoding audio filename:</p>
+<pre><code>transcriptions.txt
+
+wav_filename_1.wav This is one utterance.
+wav_filename_2.wav This is a second utterance.
+...
+</code></pre>
+
+<p>We can then create a basic .tsv file as follows (again using python):</p>
+<pre><code class="python">import glob
+import os.path
+
+audio_data_dir = '/data/audio'
+transcriptions_file = '/data/transcriptions.txt'
+
+tsv_file = 'all.tsv'
+# The audio files are in separate folders per speaker (named after speaker id)
+wav_files = glob.glob(f&quot;{audio_data_dir}/*/.wav&quot;)
+
+# No transcription file, no honey 
+with open(transcriptions_file, 'r') as trans:
+    transcriptions = {}
+    speakers = {}
+    paths = {}
+    for line in trans:
+        cline = line.rstrip()
+        line_info = cline.split(' ')
+        utt_id, ext = os.path.splitext(line_info[0])
+        if len(line_info)&gt;1:
+            transcriptions[utt_id] = &quot; &quot;.join(line_info[1:])
+
+    for recording in wav_files:
+        path_head, wav_basename = os.path.split(recording)
+        path_head, spk_id = os.path.split()
+        utt_id, ext = os.path.splitext(wav_basename)
+        speakers[utt_id] = spk_id
+        paths[utt_id] = wav_basename
+
+    with open(tsv_file, 'w') as tsv:
+        tsv_file.write(&quot;\t&quot;.join((&quot;client_id&quot;, &quot;path&quot;, &quot;sentence&quot;))+&quot;\n&quot;)
+        for utt_id in transcriptions:
+            sentence = transcriptions[utt_id]
+            speaker = speakers[utt_id]
+            audio = paths[utt_id]
+            tsv_file.write(f&quot;{speaker}\t{audio}\t{sentence}\n&quot;)
+</code></pre>
+
+<p>And what if the transcriptions are inside json files along with other metadata? That's indeed true for a dataset I am aware of. To be discussed later.</p>
+<h3 id="creating-the-wavscp-file">Creating the wav.scp file</h3>
+<p>The russian commonvoice dataset only has .mp3 (and not wav) audio files. So, we will need to preprocess the data to get the wav files Kaldi requires. A tool to do that is sox using the following command lines (in bash):</p>
+<pre><code class="bash">for f in /data/audio/*/*.mp3; do
+    sox $f -r 16000 $f.wav;
+done
+
+</code></pre>
+
+<p>By the way, we have specified, using the <code>-r</code> switch, that we want to also downsample the data to 16kHz. And then we can proceed with creating the 'wav.scp' by just doing the following in python (appending to the script we started in the previous section):</p>
+<pre><code class="python">
+dataset['abs_path'] = os.path.audio_data_dir + '/' + dataset['path'] + '.wav'
+
+dataset[['id', 'abs_path']].to_csv(wav_scp_file, sep=' ', index=False, header=False)
+</code></pre>
+
+<p>Kaldi also provides a neat way to do this conversion from mp3 to wav right before the feature extraction step (that we will discuss later on) avoiding in this way to store the wav files and saving space. It should be noted here that wav files can be significantly bigger than their compressed (mp3)  versions (depending on the exact sampling rates and quality the wav file could be ~10 times bigger or even more). </p>
+<p>This is done by providing a command line that would write the converted audio directly to stdout so that it could be piped into a following command (bash magic). The command line would look like this:</p>
+<pre><code class="bash">sox file.mp3 -t wav -r 16000 - | 
+</code></pre>
+
+<p>By providing the <code>-</code> at the input of <code>sox</code> instead of a filename we are guiding the tool to generate the output and flush it to the standard output. And then we can pipe this into the following command. So, to write the corresponding wav.scp file in python we would do the following:</p>
+<pre><code class="python"># Create wav.scp file
+
+dataset['mp3_to_wav'] = 'sox ' + audio_data_dir + '/' + dataset['path'] + ' -r 16000 -t wav - |'
+
+dataset[['id', 'mp3_to_wav']].to_csv(wav_scp_file, quotechar=' ', sep=' ', index=False, header=False)
+</code></pre>
+
+<p>So, what about the <code>quotechar</code>? As one would easily notice if omitting to use this, the generated file would look as follows:</p>
+<pre><code>wav.scp
+
+id000001 &quot;sox f1.mp3 -r 16000 -t wav - |&quot;
+...
+</code></pre>
+
+<p>where the command has been written within quotes. That's the right thing to do  given that our separator is the space character that is also included in the command line we want to register. Without the quotes our file won't be readable as a space-separated file. That's not what we are aiming at, however. Our goal is to just separate the initial column, i.e., the id, from the rest of the line with a space (that's what Kaldi needs, it complains otherwise) and we are just tweaking a bit the <code>.to_csv</code> method of pandas dataframes to make it work as we want. So, instead of a "quote" we instruct pandas to use a space character. </p>
+<h3 id="creating-the-text-file">Creating the text file</h3>
+<p>Having done most of the work already, the only thing we need to take care when creating the text file is to clean punctuation (well, and also use python3 to make sure encodings are handled properly out-of-the-box). The code in python follows:</p>
+<pre><code># Create trans_file
+
+dataset['sentence'] = dataset['sentence'].str.replace(r'[^\w\s]+',' ', regex=True)
+
+dataset[['id', 'sentence']].to_csv(trans_file, quotechar=' ', sep=' ', index=False, header=False)
+</code></pre>
+
+<p>Using the <code>quotechar</code>here for the reasons explained above.</p>
+<h3 id="and-here-comes-the-utt2spk-file">And here comes the utt2spk file</h3>
+<p>The easiest of all. Mind the <code>quotechar</code> game again:</p>
+<pre><code># Create utt2spk file
+
+dataset[['id', 'client_id']].to_csv(utt2spk_file, quotechar=' ', sep=' ', index=False, header=False)
+</code></pre>
+
+<p>And that's our "process_tsv_file.py" script. Could be named: "data_prep_from_tsv.py". That would probably be more appropriate. </p>
+<h2 id="final-steps">Final steps</h2>
+<p>There are two more things to be done:
+1. Create the spk2utt file.
+2. Validate that these data files are all following Kaldi conventions. There is a script for that. </p>
+<p>We will use the <code>utils/utt2spk_to_spk2utt.pl</code> for that, copying it from the "minilibrispeech". Actually, let's copy the entire "utils", "steps", and "local" folders into our working directory since we will be using various tools and scripts from there:</p>
+<pre><code>cp -rp mini_librispeech/s5/{utils,steps,local} cv_russian/s5
+</code></pre>
+
+<p>And we will properly modify the "local/data_prep.sh" script to create our own:</p>
+<pre><code class="bash">#!/usr/bin/env bash 
+# Copyright 2020 Nassos Katsamanis
+# Apache 2.0
+
+if [ &quot;$#&quot; -ne 3 ]; then
+    echo &quot;Usage: $0 &lt;src-dir&gt; &lt;part-info&gt; &lt;dst-dir&gt;&quot;
+    echo &quot;e.g.: $0 /data/russian train.tsv data/train&quot;
+exit 1
+
+fi
+
+src=$1
+part=$2
+dst=$3
+
+mkdir -p $dst || exit 1;
+
+[ ! -d $src ] &amp;&amp; echo &quot;$0: no such directory $src&quot; &amp;&amp; exit 1;
+
+# If the following files exist, then delete them, we will recreate them.
+wav_scp=$dst/wav.scp; [[ -f &quot;$wav_scp&quot; ]] &amp;&amp; rm $wav_scp
+trans=$dst/text; [[ -f &quot;$trans&quot; ]] &amp;&amp; rm $trans
+utt2spk=$dst/utt2spk; [[ -f &quot;$utt2spk&quot; ]] &amp;&amp; rm $utt2spk
+
+# Process tsv files to extract all required information
+PYTHONIOENCODING=UTF-8 python3 local/process_tsv_file.py $part $src/clips $wav_scp $trans $utt2spk
+
+spk2utt=$dst/spk2utt
+utils/utt2spk_to_spk2utt.pl &lt;$utt2spk &gt;$spk2utt || exit 1
+
+</code></pre>
+
+<p>And here comes the data validation part:</p>
+<pre><code># Data validation
+
+# To measure the number of lines in the corresponding files
+ntrans=$(wc -l &lt;$trans)
+nutt2spk=$(wc -l &lt;$utt2spk)
+
+! [ &quot;$ntrans&quot; -eq &quot;$nutt2spk&quot; ] &amp;&amp; \
+
+echo &quot;Inconsistent #transcripts($ntrans) and #utt2spk($nutt2spk)&quot; &amp;&amp; exit 1;
+utils/validate_data_dir.sh --no-feats $dst || exit 1;
+
+echo &quot;$0: successfully prepared data in $dst&quot;
+
+exit 0
+</code></pre>
+
+<p>Data validation must be 100% successful before proceeding with the rest of the recipe.</p>
+<h2 id="back-to-the-recipe">Back to the recipe</h2>
+<p>And this is how our recipe looks now. Notice how we need to run data preparation for each of our "training", "development", and "test" datasets.</p>
+<pre><code>#!/usr/bin/env bash
+
+src_data=/data/russian/cv-corpus-6.1-2020-12-11/ru/
+
+# These are for configuration and to add tools to the path so that they are 
+# accessible from the command line.
+. ./cmd.sh
+. ./path.sh
+
+stage=0
+
+. utils/parse_options.sh
+
+set -euo pipefail
+mkdir -p data
+
+# Data preparation
+# No need to split data into train, dev, and test. Commonvoice data is already split.
+
+if [ $stage -le 1 ]; then
+# format the data as Kaldi data directories
+    for part in train dev test; do
+        # For each of these parts we need to have a separate subfolder with the following files in it:
+        # wav.scp text utt2spk spk2utt
+        local/russian_data_prep.sh $src_data $src_data/$part.tsv data/$part
+    done
+fi
+</code></pre></div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js" defer></script>
+        <script src="../search/main.js" defer></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="Search Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Search</h4>
+            </div>
+            <div class="modal-body">
+                <p>
+                    From here you can search these documents. Enter
+                    your search terms below.
+                </p>
+                <form role="form">
+                    <div class="form-group">
+                        <input type="text" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="Keyboard Shortcuts Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Keyboard Shortcuts</h4>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>
