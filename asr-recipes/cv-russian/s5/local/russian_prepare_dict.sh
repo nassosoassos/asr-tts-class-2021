@@ -31,11 +31,12 @@ vocab=$lm_dir/vocab-full.txt
 [ ! -f $vocab ] && echo "$0: vocabulary file not found at $vocab" && exit 1;
 
 # Remove <s>, etc. from the beginning of the list
+mkdir -p $dst_dir || exit 1;
+
 vocab_only_words=$dst_dir/vocab_only_words.txt
 tail -n +5 $vocab > $vocab_only_words
 lexicon_raw_nosil=$dst_dir/lexicon_raw_nosil.txt
 
-mkdir -p $dst_dir || exit 1;
 
 # Building the dictionary using phonemize
 if [ ! -f $lexicon_raw_nosil ]; then
